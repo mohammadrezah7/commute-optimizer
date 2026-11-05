@@ -112,4 +112,15 @@ def crossover(parent1: State, parent2: State, problem: CommuteProblem) -> State:
         State: A newly generated child State.
     """
     # TODO: Implement genetic crossover
-    raise NotImplementedError("Implement crossover in algorithms/operators.py")
+    shared = [node for node in parent1.path[1:-1] if node in parent2.path[1:-1]]
+    random.shuffle(shared)
+    departure = random.choice([parent1.departure_time, parent2.departure_time])
+
+    for node in shared:
+        i = parent1.path.index(node)
+        j = parent2.path.index(node)
+        child_path = parent1.path[:i] + parent2.path[j:]
+        if len(set(child_path)) == len(child_path):
+            return State(child_path, departure)
+
+    return random.choice(get_neighbors(parent1, problem))
