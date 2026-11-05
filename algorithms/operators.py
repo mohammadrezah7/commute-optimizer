@@ -3,9 +3,41 @@ algorithms/operators.py
 Defines candidate neighborhood generation and genetic recombination operators.
 """
 
+import random
 from typing import List
 from core.state import State
 from core.problem import CommuteProblem
+
+
+def random_path(problem: CommuteProblem, start: str, goal: str, blocked: set):
+    if start == goal:
+        return [start]
+    blocked = blocked | {start}
+    options = problem.network.get_neighbors(start)
+    random.shuffle(options)
+    for nxt in options:
+        if nxt in blocked:
+            continue
+        rest = random_path(problem, nxt, goal, blocked)
+        if rest is not None:
+            return [start] + rest
+    return None
+
+
+def detour_paths(state: State, problem: CommuteProblem) -> List[tuple]:
+    path = state.path
+    results = []
+    for i in range(len(path) - 1):
+        for j in range(i + 1, len(path)):
+            outside = set(path[:i]) | set(path[j + 1:])
+            for _ in range(3):
+                segment = random_path(problem, path[i], path[j], outside)
+                if segment is not None and segment != list(path[i:j + 1]):
+                    new_path = path[:i] + tuple(segment) + path[j + 1:]
+                    if new_path not in results:
+                        results.append(new_path)
+                    break
+    return results
 
 
 def get_neighbors(state: State, problem: CommuteProblem) -> List[State]:
@@ -39,7 +71,20 @@ def get_neighbors(state: State, problem: CommuteProblem) -> List[State]:
         List[State]: A list of valid neighboring State objects.
     """
     # TODO: Implement neighborhood generation
-    raise NotImplementedError("Implement get_neighbors in algorithms/operators.py")
+    times = [state.departure_time]
+    for t in (state.departure_time - problem.t_step, state.departure_time + problem.t_step):
+        if problem.t_min <= t <= problem.t_max:
+            times.append(t)
+
+    paths = [state.path] + detour_paths(state, problem)
+
+    neighbors = []
+    for path in paths:
+        for t in times:
+            if path == state.path and t == state.departure_time:
+                continue
+            neighbors.append(State(path, t))
+    return neighbors
 
 
 def crossover(parent1: State, parent2: State, problem: CommuteProblem) -> State:
